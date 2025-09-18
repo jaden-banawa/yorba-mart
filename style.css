@@ -322,3 +322,34 @@ button:disabled {
     color: var(--muted);
   }
 }
+
+.custom-file-upload {
+  position: relative;
+  display: inline-block;
+  width: 88%;
+  max-width: 360px;
+  margin: 8px auto 2px;
+}
+
+/* Make sure the input physically sits on top & is tappable */
+.custom-file-upload input[type="file"] {
+  position: absolute;
+  inset: 0;
+  z-index: 2;             /* <-- important on iOS */
+  opacity: 0.001;         /* 0 is okay on desktop, but some iOS versions are finicky */
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+/* Keep the label visible under it */
+.custom-file-upload label {
+  position: relative;
+  z-index: 1;
+  display: block;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  font-weight: 600;
+}
+
