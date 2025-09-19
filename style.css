@@ -82,13 +82,14 @@ h2 { font-size: 1.35rem; font-weight: 700; color: var(--text); }
 /* ---- Profile Card ---- */
 .profile {
   /* keep your existing styles */
-  background: white;
-  border-radius: 10px;
-  padding: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 16px 14px 18px;
+  box-shadow: var(--shadow);
   cursor: pointer;
   transition: transform 0.2s ease;
-
+  border: 1px solid rgba(2, 132, 199, 0.06);
+  box-sizing: border-box;
   width: 100%;          /* fill the grid track */
   max-width: 200px;     /* cap the visual width */
   justify-self: center; /* center the card within its track */
