@@ -280,3 +280,108 @@ el.submitProfile.addEventListener("click", async () => {
 fetchUsers().catch(err => {
   console.error("Initial load failed:", err);
 });
+
+// ---- Cropper loader (loads CSS+JS from CDN only when needed) ----
+let cropperLibLoaded = false;
+function loadCropperOnce() {
+  if (cropperLibLoaded) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    // CSS
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://unpkg.com/cropperjs@1.5.13/dist/cropper.min.css";
+    // JS
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/cropperjs@1.5.13/dist/cropper.min.js";
+    script.onload = () => { cropperLibLoaded = true; resolve(); };
+    script.onerror = reject;
+    document.head.appendChild(link);
+    document.head.appendChild(script);
+  });
+}
+
+// ---- Minimal crop overlay (created dynamically; no HTML edits) ----
+let cropper, cropOverlayEl, cropImgEl, cropResolve, cropReject;
+
+function openCropOverlay(dataUrl) {
+  return new Promise(async (resolve, reject) => {
+    cropResolve = resolve;
+    cropReject = reject;
+
+    // Root overlay
+    cropOverlayEl = document.createElement("div");
+    cropOverlayEl.style.cssText = `
+      position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      display: flex; align-items: center; justify-content: center; z-index: 9999;
+    `;
+
+    // Panel
+    const panel = document.createElement("div");
+    panel.style.cssText = `
+      background: #fff; width: min(92%, 560px); max-height: 90vh; overflow: hidden;
+      border-radius: 16px; box-shadow: 0 18px 46px rgba(0,20,50,.28);
+      display: flex; flex-direction: column;
+    `;
+
+    // Image area
+    const imgWrap = document.createElement("div");
+    imgWrap.style.cssText = "width:100%; aspect-ratio: 1/1; background:#111";
+
+    cropImgEl = document.createElement("img");
+    cropImgEl.src = dataUrl;
+    cropImgEl.alt = "Crop";
+    cropImgEl.style.cssText = "max-width:100%; display:block;";
+
+    imgWrap.appendChild(cropImgEl);
+
+    // Buttons
+    const bar = document.createElement("div");
+    bar.style.cssText = "display:flex; gap:10px; padding:12px; justify-content:flex-end; background:#f8fafc;";
+    const cancelBtn = Object.assign(document.createElement("button"), {textContent: "Cancel"});
+    const cropBtn = Object.assign(document.createElement("button"), {textContent: "Crop & Save"});
+
+    // Button styles (lightweight)
+    Object.assign(cropBtn.style, {padding:"10px 14px", borderRadius:"10px", border:"none", background:"#0ea5e9", color:"#fff", fontWeight:"700", cursor:"pointer"});
+    Object.assign(cancelBtn.style, {padding:"10px 14px", borderRadius:"10px", border:"1px solid #e5e7eb", background:"#f3f4f6", cursor:"pointer"});
+
+    cancelBtn.onclick = () => { closeCropOverlay(); reject(new Error("crop-canceled")); };
+    cropBtn.onclick = () => {
+      try {
+        // Export 150x150 JPEG
+        const canvas = cropper.getCroppedCanvas({ width: 150, height: 150 });
+        const out = canvas.toDataURL("image/jpeg", 0.9);
+        closeCropOverlay();
+        resolve(out);
+      } catch (e) {
+        closeCropOverlay();
+        reject(e);
+      }
+    };
+
+    bar.append(cancelBtn, cropBtn);
+    panel.append(imgWrap, bar);
+    cropOverlayEl.appendChild(panel);
+    document.body.appendChild(cropOverlayEl);
+
+    // Init cropper after next frame to ensure image is in DOM
+    await loadCropperOnce();
+    requestAnimationFrame(() => {
+      cropper = new window.Cropper(cropImgEl, {
+        aspectRatio: 1,            // square
+        viewMode: 1,               // restrict the crop box to not exceed the size of the canvas
+        dragMode: "move",
+        autoCropArea: 1,
+        responsive: true,
+        background: false,
+        checkCrossOrigin: false,
+      });
+    });
+  });
+}
+
+function closeCropOverlay() {
+  if (cropper) { cropper.destroy(); cropper = null; }
+  if (cropOverlayEl?.parentNode) cropOverlayEl.parentNode.removeChild(cropOverlayEl);
+  cropOverlayEl = null; cropImgEl = null;
+}
+
